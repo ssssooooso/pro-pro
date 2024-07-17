@@ -4,7 +4,7 @@ metadata:
   name: postgres
   namespace: 3ifp
 spec:
-  replicas: 3 #갯수
+  replicas: 2 #갯수
   selector:
     matchLabels:
       app: postgres
