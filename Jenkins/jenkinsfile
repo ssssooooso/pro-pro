@@ -1,0 +1,126 @@
+pipeline {
+	agent any
+	environment {
+    DOCKER_IMAGE = "stradivirus/fast"
+    DOCKER_TAG = "${env.BUILD_NUMBER}"
+    GIT_REPO = "<https://github.com/ssssooooso/proDev.git>"
+    PROD_REPO = "<https://github.com/ssssooooso/pro-pro.git>"
+}
+
+triggers {
+    pollSCM('H/5 * * * *')
+}
+
+stages {
+    stage('Checkout') {
+        steps {
+            git branch: 'master', url: "${GIT_REPO}"
+        }
+    }
+
+    stage('Check for Changes') {
+        steps {
+            script {
+                def fastapiChanged = sh(script: 'git diff HEAD^ HEAD --name-only | grep -E "^fastapi/(Dockerfile|main\\\\.py)\\\\$"', returnStatus: true) == 0
+                env.FASTAPI_CHANGED = "${fastapiChanged}"
+                def otherChanged = sh(script: "git diff HEAD^ HEAD --name-only | grep -vE '^fastapi/'", returnStatus: true) == 0
+                env.OTHER_CHANGED = "${otherChanged}"
+                echo "FastAPI files changed: ${env.FASTAPI_CHANGED}"
+                echo "Other files changed: ${env.OTHER_CHANGED}"
+            }
+        }
+    }
+
+    stage('Build and Push Docker Image') {
+        when {
+            expression { env.FASTAPI_CHANGED == 'true' }
+        }
+        steps {
+            script {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    sh """
+                    docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} ./fastapi
+                    docker tag ${DOCKER_IMAGE}:${DOCKER_TAG} ${DOCKER_IMAGE}:latest
+                    echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+                    docker push ${DOCKER_IMAGE}:${DOCKER_TAG}
+                    docker push ${DOCKER_IMAGE}:latest
+                    """
+                }
+            }
+        }
+    }
+
+    stage('Update Kubernetes Manifests') {
+        when {
+            expression { env.FASTAPI_CHANGED == 'true' }
+        }
+        steps {
+            script {
+                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                    sh """
+                    sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${DOCKER_TAG}|' fast.yaml
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins"
+                    git add fast.yaml
+                    git commit -m "Update image to ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                    git push <https://${GIT_USERNAME}:${GIT_PASSWORD}@$>{GIT_REPO.replaceFirst('https://', '')} master
+                    """
+                }
+            }
+        }
+    }
+
+    stage('Build Other Changes') {
+        when {
+            expression { env.OTHER_CHANGED == 'true' }
+        }
+        steps {
+            sh 'echo Building the project'
+            // TODO: Add actual build commands here
+            // For example: sh 'mvn clean install'
+        }
+    }
+
+    stage('Test Other Changes') {
+        when {
+            expression { env.OTHER_CHANGED == 'true' }
+        }
+        steps {
+            sh 'echo Running tests'
+            // TODO: Add actual test commands here
+            // For example: sh 'mvn test'
+        }
+    }
+
+    stage('Push Other Changes to Prod') {
+        when {
+            expression { env.OTHER_CHANGED == 'true' }
+        }
+        steps {
+            withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                sh """
+                    git config user.email "jenkins@example.com"
+                    git config user.name "Jenkins"
+                    git remote remove prod || true
+                    git remote add prod <https://${GIT_USERNAME}:${GIT_PASSWORD}@$>{PROD_REPO.replaceFirst('https://', '')}
+                    git push prod master:master --force
+                """
+            }
+        }
+    }
+}
+
+post {
+    always {
+        sh 'docker logout || true'
+        cleanWs()
+    }
+    success {
+        echo "Pipeline succeeded! Changes have been processed and pushed to appropriate repositories."
+    }
+    failure {
+        echo "Pipeline failed. Error at stage: ${currentBuild.result}"
+    }
+}
+}
+

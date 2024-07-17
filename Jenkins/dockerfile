@@ -1,0 +1,26 @@
+FROM jenkins/jenkins:lts
+
+USER root
+
+# Docker CLI 설치
+RUN apt-get update && \
+    apt-get -y install apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg2 \
+    software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add - && \
+    add-apt-repository \
+    "deb [arch=amd64] https://download.docker.com/linux/debian \
+    $(lsb_release -cs) \
+    stable" && \
+    apt-get update && \
+    apt-get -y install docker-ce-cli
+
+# docker 그룹 생성 (이미 존재하지 않는 경우)
+RUN groupadd -f docker
+
+# Jenkins 사용자에게 Docker 그룹 권한 부여
+RUN usermod -aG docker jenkins
+
+USER jenkins

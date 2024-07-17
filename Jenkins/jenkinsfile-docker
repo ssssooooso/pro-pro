@@ -1,0 +1,52 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout Dev') {
+            steps {
+                // TODO: 개발 레포지토리 URL을 적절히 변경하세요
+                git branch: 'master', url: '<https://github.com/ssssooooso/proDev.git>'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'echo Building the project'
+                // TODO: 실제 빌드 명령어를 추가하세요
+                // 예: sh 'mvn clean install'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'echo Running tests'
+                // TODO: 실제 테스트 명령어를 추가하세요
+                // 예: sh 'mvn test'
+            }
+        }
+
+        stage('Push to Prod') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'github', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD')]) {
+                    sh '''
+                        git config user.email "jenkins@example.com"
+                        git config user.name "Jenkins"
+                        git remote remove prod || true
+                        # TODO: 프로덕션 레포지토리 URL을 적절히 변경하세요
+                        git remote add prod <https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/ssssooooso/pro-pro.git>
+                        git push prod master:master --force
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Pipeline succeeded! Changes have been pushed to production repository."
+        }
+        failure {
+            echo "Pipeline failed. Error at stage: ${currentBuild.result}"
+        }
+    }
+}

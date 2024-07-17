@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: my-app
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: myapp=docker.io/ssssooooso/gcu8s
+    argocd-image-updater.argoproj.io/myapp.update-strategy: semver
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Stradivirus/pro-pro.git
+    targetRevision: HEAD
+    path: .
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
