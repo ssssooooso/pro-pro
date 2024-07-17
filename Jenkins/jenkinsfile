@@ -32,9 +32,6 @@ pipeline {
         }
 
         stage('Build and Push Docker Image') {
-            when {
-                expression { env.FASTAPI_CHANGED == 'true' }
-            }
             steps {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'docker_credentials', usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
