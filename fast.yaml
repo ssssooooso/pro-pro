@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: fastapi
-        image: ssssooooso/gcu8s:latest #여기에 도커허브에서 가져올 이미지 작성
+        image: ssssooooso/gcu8s:v1 #여기에 도커허브에서 가져올 이미지 작성
         ports:
         - containerPort: 8000
         env:
