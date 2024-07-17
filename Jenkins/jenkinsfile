@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = "stradivirus/fast"
+        DOCKER_IMAGE = "ssssooooso/gcu8s"
         DOCKER_TAG = "${env.BUILD_NUMBER}"
         GIT_REPO = "https://github.com/ssssooooso/proDev.git"
         PROD_REPO = "https://github.com/ssssooooso/pro-pro.git"
