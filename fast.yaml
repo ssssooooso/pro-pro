@@ -4,7 +4,7 @@ metadata:
   name: fastapi
   namespace: 3ifp
 spec:
-  replicas: 4
+  replicas: 3
   selector:
     matchLabels:
       app: fastapi
